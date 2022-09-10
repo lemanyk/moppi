@@ -5,12 +5,14 @@ With an automatic dependecy file management
 With the explicit package dependecy tree. Inspired by yarn and go/mod.
 add creates new file package.py / moppi.py
 
+```
 python -m moppi add flask
 python -m moppi add flask -d --dev
 python -m moppi delete flask
 python -m moppi apply
 python -m moppi apply - f package.py / moppi.py
 python -m moppi update flask
+```
 
 ## Config file example, stored in moppi.yaml
 ```
