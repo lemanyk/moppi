@@ -12,7 +12,7 @@ python -m moppi apply
 python -m moppi apply - f package.py / moppi.py
 python -m moppi update flask
 
-# Config file example, stored in moppi.yaml
+## Config file example, stored in moppi.yaml
 ```
 dependencies:
   Werkzeug:
@@ -41,7 +41,7 @@ indirect_dependencies:
     version: 2.1.9
 ```
 
-# todo
+## todo
 yaml dump indirect
 yaml load
 tar.gz unpacking
@@ -55,7 +55,7 @@ Should be only used inside of a virtualenv.
 In docker it's still better to use a non-root user, so third party packages won't tamper with hosts file, system clock or even run outside of a container using some vulnerabilty. Or run outside of a container into cluster causing catastrophe.
 
 
-# done
+## done
 dependencies
 yaml dump
 dev packages
