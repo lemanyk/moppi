@@ -13,6 +13,7 @@ python -m moppi apply - f package.py / moppi.py
 python -m moppi update flask
 
 # Config file example, stored in moppi.yaml
+```
 dependencies:
   Werkzeug:
     name: Werkzeug
@@ -38,6 +39,7 @@ indirect_dependencies:
     - Werkzeug
     sha256: a735a990a1095f75ca4f36ea2ef2752c99e6ee997c46b0de507ba40a09bf7330
     version: 2.1.9
+```
 
 # todo
 yaml dump indirect
