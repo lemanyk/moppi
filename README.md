@@ -5,7 +5,8 @@ With an automatic dependecy file management
 With the explicit package dependecy tree. Inspired by yarn and go/mod.
 add creates new file package.py / moppi.py
 
-```
+add / install / i, delete / remove / r
+
 python -m moppi add flask
 python -m moppi add flask -d --dev
 python -m moppi delete flask
@@ -44,11 +45,10 @@ indirect_dependencies:
 ```
 
 ## todo
-yaml dump indirect
-yaml load
 tar.gz unpacking
 platform=Windows support
 
+Is sha256 even neccesary(?)
 Package format is either python or yaml(with anchors) or json
 Async
 Check pip cli, but not the source
@@ -58,6 +58,9 @@ In docker it's still better to use a non-root user, so third party packages won'
 
 
 ## done
+connect to venv
+yaml load
+yaml dump indirect
 dependencies
 yaml dump
 dev packages
