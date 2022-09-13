@@ -46,23 +46,22 @@ indirect_dependencies:
 ```
 
 ## todo
-tar.gz unpacking
-platform=Windows support
+tar.gz unpacking  
+platform=Windows support  
 
-Is sha256 even neccesary(?)
-Package format is either python or yaml(with anchors) or json
-Async
-Check pip cli, but not the source
-Can install other moppi projects without extra configuration.
-Should be only used inside of a virtualenv.
+Is sha256 even neccesary(?)  
+Package format is either python or yaml(with anchors) or json  
+Async  
+Check pip cli, but not the source  
+Can install other moppi projects without extra configuration.  
+Should be only used inside of a virtualenv.  
 In docker it's still better to use a non-root user, so third party packages won't tamper with hosts file, system clock or even run outside of a container using some vulnerabilty. Or run outside of a container into cluster causing catastrophe.
 
-
 ## done
-connect to venv
-yaml load
-yaml dump indirect
-dependencies
-yaml dump
-dev packages
-indirect packages
+connect to venv  
+yaml load  
+yaml dump indirect  
+dependencies  
+yaml dump  
+dev packages  
+indirect packages  
