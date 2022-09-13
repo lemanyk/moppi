@@ -1,12 +1,13 @@
 # Moppi
-Moppi - Modern Python Package Installer
-Where you don't manually manage the package list file
-With an automatic dependecy file management
-With the explicit package dependecy tree. Inspired by yarn and go/mod.
-add creates new file package.py / moppi.py
+Moppi - Modern Python Package Installer  
+Where you don't manually manage the package list file  
+With an automatic dependecy file management  
+With the explicit package dependecy tree. Inspired by yarn and go/mod.  
+add creates new file package.py / moppi.py  
 
-add / install / i, delete / remove / r
+add / install / i, delete / remove / r  
 
+```
 python -m moppi add flask
 python -m moppi add flask -d --dev
 python -m moppi delete flask
