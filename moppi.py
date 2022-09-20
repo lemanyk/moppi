@@ -2,6 +2,8 @@
 Modern Python Package Installer
 """
 
+import argparse
+from importlib.resources import Package
 import io
 import json
 import sys
@@ -18,6 +20,28 @@ class Moppi:
         self.dependencies = {}
         self.dev_dependencies = {}
         self.indirect_dependencies = {}
+
+    def run(self) -> None:
+        """Execute install, remove, update or apply"""
+        command, package = self._parse_args()
+        match command:
+            case 'install':
+                print(f'Installing {package}')
+                self.install(package)
+            case 'remove':
+                print(f'Removing {package}')
+                self.remove(package)
+
+    def _parse_args(self) -> tuple[str]:
+        """Parse the command line args"""
+        CHOICES = ('install', 'remove', 'update')
+        parser = argparse.ArgumentParser('Moppi package installer')
+        parser.add_argument('command', type=str, choices=CHOICES, help='command to execute')
+        parser.add_argument('package', type=str, help='package name')
+        args = parser.parse_args()
+        command = args.command
+        package = args.package
+        return command, package
 
     def _load_config(self) -> dict:
         """Loads moppi.yaml file"""
@@ -46,10 +70,6 @@ class Moppi:
         del packages['all']
         with open('moppi.yaml', 'w', encoding='utf8') as yaml_file:
             yaml.dump(packages, yaml_file)
-
-    def run(self, args: list) -> None:
-        """Execute install, remove, update or apply"""
-        pass
 
     def install(self, package: str, is_dev: bool = False) -> None:
         """Install a package"""
@@ -123,4 +143,5 @@ class Moppi:
 
 
 if __name__ == '__main__':
-    Moppi().install('Werkzeug')
+    #Moppi().install('Werkzeug')
+    Moppi().run()
