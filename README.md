@@ -3,7 +3,7 @@ Moppi - Modern Python Package Installer
 Where you don't manually manage the package list file  
 With an automatic dependecy file management  
 With the explicit package dependecy tree. Inspired by yarn and go/mod.  
-add creates new file package.py / moppi.py  
+add creates new file moppi.yaml  
 
 add / install / i, delete / remove / r  
 
@@ -45,6 +45,16 @@ indirect_dependencies:
     version: 2.1.9
 ```
 
+## Installation
+Moppi should be only used inside of a virtualenv.  
+The best way to boot Moopi is to create a virtualenv and install `moppi` package via pip.  
+```
+python -m venv .env
+source .env/bin/activate
+pip install moppi
+```
+
+
 ## todo
 python -m moppi support  
 unit tests  
@@ -59,7 +69,6 @@ Package format is either python or yaml(with anchors) or json
 Async  
 Check pip cli, but not the source  
 Can install other moppi projects without extra configuration.  
-Should be only used inside of a virtualenv.  
 In docker it's still better to use a non-root user, so third party packages won't tamper with hosts file, system clock or even run outside of a container using some vulnerabilty. Or run outside of a container into cluster causing catastrophe.
 
 ## done

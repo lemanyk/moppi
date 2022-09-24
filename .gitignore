@@ -3,6 +3,7 @@ __pycache__/
 
 # Distribution / packaging
 .env/
+dist/
 moppi.yaml
 
 # Unit test / coverage reports
