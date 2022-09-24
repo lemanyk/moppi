@@ -33,3 +33,6 @@ dev = [
 [project.urls]
 "Homepage" = "https://github.com/lemanyk/moppi"
 "Bug Tracker" = "https://github.com/lemanyk/moppi/issues"
+
+[tool.black]
+line-length = 120

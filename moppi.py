@@ -3,42 +3,77 @@ Modern Python Package Installer
 """
 
 import argparse
-from importlib.resources import Package
 import io
 import json
 import sys
 import urllib.request
+from pathlib import Path
 from zipfile import ZipFile
 
 import yaml
 
 
+def _rmtree(file: Path):
+    if file.is_file():
+        file.unlink()
+    else:
+        for child in file.iterdir():
+            _rmtree(child)
+        file.rmdir()
+
+
+class Config:
+    """Config"""
+
+    CONFIG_FILE = "moppi.yaml"
+
+    def __init__(self) -> None:
+        try:
+            with open(self.CONFIG_FILE, "r", encoding="utf8") as yaml_file:
+                config = yaml.load(yaml_file, yaml.Loader)
+        except FileNotFoundError:
+            config = {}
+
+        self.dependencies = config.get("dependencies", {})
+        self.dev_dependencies = config.get("dev_dependencies", {})
+        self.indirect_dependencies = config.get("indirect_dependencies", {})
+        print("Currently installed", self.all)
+
+    @property
+    def all(self):
+        """All installed packages"""
+        return {
+            package.lower()
+            for package in self.dependencies.keys()
+            | self.dev_dependencies.keys()
+            | self.indirect_dependencies.keys()
+        }
+
+    def save(self):
+        """Save the config into moppi.yaml"""
+        config = {
+            "dependencies": self.dependencies,
+            "dev_dependencies": self.dev_dependencies,
+            "indirect_dependencies": self.indirect_dependencies,
+        }
+
+        with open("moppi.yaml", "w", encoding="utf8") as yaml_file:
+            yaml.dump(config, yaml_file)
+
+
 class Moppi:
+    """Moppi package installer"""
 
-    def __init__(self, config_file: str = 'moppi.yaml') -> None:
-        self.config_file = config_file
-        self.dependencies = {}
-        self.dev_dependencies = {}
-        self.indirect_dependencies = {}
-
-    def run(self) -> None:
-        """Execute install, remove, update or apply"""
-        command, package = self._parse_args()
-        match command:
-            case 'install':
-                print(f'Installing {package}')
-                self.install(package)
-            case 'remove':
-                print(f'Removing {package}')
-                self.remove(package)
+    def __init__(self) -> None:
+        self.config = Config()
 
     def _parse_args(self) -> tuple[str]:
         """Parse the command line args"""
-        CHOICES = ('install', 'remove', 'update')
+        choices = ("add", "remove", "update", "apply")
 
-        parser = argparse.ArgumentParser('Moppi package installer')
-        parser.add_argument('command', type=str, choices=CHOICES, help='command to execute')
-        parser.add_argument('package', type=str, help='package name')
+        parser = argparse.ArgumentParser("Moppi package installer")
+        parser.add_argument("command", type=str, choices=choices, help="command to execute")
+        parser.add_argument("package", type=str, help="package name")
 
         args = parser.parse_args()
         command = args.command
@@ -46,105 +81,111 @@ class Moppi:
 
         return command, package
 
-    def _load_config(self) -> dict:
-        """Loads moppi.yaml file"""
-        try:
-            with open(self.config_file, 'r', encoding='utf8') as yaml_file:
-                config = yaml.load(yaml_file, yaml.Loader)
-        except FileNotFoundError:
-            config = {}
-        print('Current config', config)
+    def run(self) -> None:
+        """Execute install, remove, update or apply"""
+        command, package = self._parse_args()
+        match command:
+            case "add":
+                print(f"Installing {package}")
+                self.add(package)
+            case "remove":
+                print(f"Removing {package}")
+                self.remove(package)
+            case "update":
+                print(f"Updating {package}")
+                self.update(package)
+            case "apply":
+                print("Appliyng moppi.conf")
+                self.apply()
 
-        packages = {
-            'dependencies': {},
-            'dev_dependencies': {},
-            'indirect_dependencies': {},
-            'all': set(),
-        }
-        packages.update(config)
-        packages['all'] = (set(packages['dependencies'].keys()) | set(packages['dev_dependencies'].keys())
-                           | set(packages['indirect_dependencies'].keys()))
-        print('Installed packages', packages)
-
-        return packages
-
-    def _save_config(self, packages: dict):
-        """Save the config into moppi.yaml file"""
-        del packages['all']
-        with open('moppi.yaml', 'w', encoding='utf8') as yaml_file:
-            yaml.dump(packages, yaml_file)
-
-    def install(self, package: str, is_dev: bool = False) -> None:
+    def add(self, package: str, needed_by: None | list = None, is_dev: bool = False) -> None:
         """Install a package"""
-        packages = self._load_config()
-
-        self._get(package, packages, None, is_dev)
-        self._save_config(packages)
-
-    def _get(self, package: str, packages: dict, needed_by: None | list, is_dev: bool) -> None:
-        """PART 1: get the file"""
-        url = f'https://pypi.org/pypi/{package}/json'
+        url = f"https://pypi.org/pypi/{package}/json"
 
         data = urllib.request.urlopen(url).read()
         info = json.loads(data)
 
-        package = info['info']['name']
-        version = info['info']['version']
-        package_url = info['urls'][0]['url']
-        filename = info['urls'][0]['filename']
+        package = info["info"]["name"]
+        version = info["info"]["version"]
+        package_url = info["urls"][0]["url"]
+        filename = info["urls"][0]["filename"]
 
-        if package in packages['all']:
-            print(f'Package {package}=={version} is already installed')
+        if package.lower() in self.config.all:
+            print(f"Package {package}=={version} is already installed")
             return
 
-        print('Downloading', filename)
+        print("Downloading", filename)
 
         data = urllib.request.urlopen(package_url).read()
-        #open(filename, 'wb').write(data)
+        # open(filename, 'wb').write(data)
 
         file = ZipFile(io.BytesIO(data))
         file.extractall(sys.path[-1])
 
         package_info = {
-            'name': package,
-            'sha256': info['urls'][0]['digests']['sha256'],
-            'version': version,
+            "name": package,
+            "sha256": info["urls"][0]["digests"]["sha256"],
+            "version": version,
         }
 
         if needed_by:
-            package_info['needed_by'] = [needed_by]
-            packages['indirect_dependencies'][package] = package_info
+            package_info["needed_by"] = [needed_by]
+            self.config.indirect_dependencies[package] = package_info
         elif is_dev:
-            packages['dev_dependencies'][package] = package_info
+            self.config.dev_dependencies[package] = package_info
         else:
-            packages['dependencies'][package] = package_info
+            self.config.dependencies[package] = package_info
 
-        packages['all'].add(package)
-
-        if info['info']['requires_dist']:
-            for dependecy in info['info']['requires_dist']:
-                if ' ' in dependecy:
-                    dep_package, versions = dependecy.split(' ', 1)
-                else:
-                    dep_package, versions = dependecy, ''
-                print('Versions', versions)
-
-                if 'Windows' in versions:
+        if info["info"]["requires_dist"]:
+            for dependecy in info["info"]["requires_dist"]:
+                if "extra" in dependecy or "platform" in dependecy:
                     continue
 
-                if dep_package not in packages['all']:
-                    self._get(dep_package, packages, package, is_dev)
+                if " " in dependecy:
+                    dep_package, versions = dependecy.split(" ", 1)
+                elif "==" in dependecy:
+                    dep_package, versions = dependecy.split("==", 1)
+                elif ">=" in dependecy:
+                    dep_package, versions = dependecy.split(">=", 1)
+                else:
+                    dep_package, versions = dependecy, ""
+
+                if dep_package not in self.config.all:
+                    print("Dependencies", dep_package, versions)
+                    self.add(dep_package, package, is_dev)
+
+        if needed_by is None:
+            self.config.save()
 
     def remove(self, package: str):
         """Remove a package"""
+        package = package.lower()
 
-    def update(self, package):
+        if package not in self.config.all:
+            print(f"Package {package} is not installed!")
+            return
+
+        files = []
+        for file in Path(sys.path[-1]).iterdir():
+            if file.name.split("-")[0].split(".")[0].lower() == package:
+                files.append(file)
+
+        if files:
+            print("Removing files:")
+            for file in files:
+                print(str(file))
+                _rmtree(file)
+
+            self.config.dependencies.pop(package)
+            self.config.save()
+
+    def update(self, package: str):
         """Update a package"""
 
     def apply(self):
         """Apply the moppi.yaml config"""
 
 
-if __name__ == '__main__':
-    #Moppi().install('Werkzeug')
+if __name__ == "__main__":
+    # Moppi().install('Werkzeug')
     Moppi().run()

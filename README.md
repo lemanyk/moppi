@@ -56,21 +56,25 @@ pip install moppi
 
 
 ## todo
+upgrade
+apply
 unit tests  
 tar.gz unpacking  
 sha256 check, but don't save it into moppi.yaml (make configurable?)  
 platform=Windows support  
 extra=='package' support  
-make public, upload to pipy, arch aur and ubuntu  
+upload to arch aur and ubuntu  
+manage dependencies directly in pyproject.toml? direct-dependencies and indirect-dependencies  
 
-Is sha256 even neccesary(?)  
 Package format is either python or yaml(with anchors) or json  
 Async  
 Check pip cli, but not the source  
 Can install other moppi projects without extra configuration.  
-In docker it's still better to use a non-root user, so third party packages won't tamper with hosts file, system clock or even run outside of a container using some vulnerabilty. Or run outside of a container into cluster causing catastrophe.
+In docker it's still better to use a non-root user, so third party packages won't tamper with hosts file, system clock or even run outside of a container using some vulnerabilty. Or run outside of a container into cluster causing catastrophe.  
 
 ## done
+uninstall
+make public, upload to pipy  
 python -m moppi support  
 CLI support  
 connect to venv  
