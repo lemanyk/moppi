@@ -56,7 +56,6 @@ pip install moppi
 
 
 ## todo
-python -m moppi support  
 unit tests  
 tar.gz unpacking  
 sha256 check, but don't save it into moppi.yaml (make configurable?)  
@@ -72,6 +71,7 @@ Can install other moppi projects without extra configuration.
 In docker it's still better to use a non-root user, so third party packages won't tamper with hosts file, system clock or even run outside of a container using some vulnerabilty. Or run outside of a container into cluster causing catastrophe.
 
 ## done
+python -m moppi support  
 CLI support  
 connect to venv  
 yaml load  

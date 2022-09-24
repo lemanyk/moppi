@@ -35,12 +35,15 @@ class Moppi:
     def _parse_args(self) -> tuple[str]:
         """Parse the command line args"""
         CHOICES = ('install', 'remove', 'update')
+
         parser = argparse.ArgumentParser('Moppi package installer')
         parser.add_argument('command', type=str, choices=CHOICES, help='command to execute')
         parser.add_argument('package', type=str, help='package name')
+
         args = parser.parse_args()
         command = args.command
         package = args.package
+
         return command, package
 
     def _load_config(self) -> dict:
