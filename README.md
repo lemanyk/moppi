@@ -5,13 +5,15 @@ With an automatic dependecy file management
 With the explicit package dependecy tree. Inspired by yarn and go/mod.  
 add creates new file moppi.yaml  
 
-add / install / i, delete / remove / r  
+add / install / i, remove / delete / r  
 
 ```
 python -m moppi add flask
 python -m moppi add flask -d --dev
-python -m moppi delete flask
+python -m moppi add flask gunicorn
+python -m moppi remove gunicorn
 python -m moppi apply
+python -m moppi apply --dev
 python -m moppi apply - f package.py / moppi.py
 python -m moppi update flask
 ```
@@ -54,26 +56,54 @@ source .env/bin/activate
 pip install moppi
 ```
 
+## Docker usage example
+```
+FROM python:3.11-slim
+
+# Creating a non-root user, so third party packages can't tamper with the hosts file,
+system clock or run outside of a container using some vulnerabilty.
+RUN useradd -D app
+WORKDIR /home/app
+USER app
+
+# Create venv and install moppi
+RUN python -m venv env
+RUN source env/bin/activate
+RUN pip install moppi
+
+# Install production dependencies.
+COPY --chown=app:app moppi.yaml .
+RUN python -m moppi apply
+
+# Copy local code to the container image.
+COPY --chown=app:app . .
+
+# Run the web service on container startup. Here we use the gunicorn
+# webserver, with one worker process and 8 threads.
+CMD ["gunicorn", "--bind", ":$PORT", "--threads", "8", "main:app"]
+```
 
 ## todo
-upgrade
-apply
+manage dependencies directly in pyproject.toml? direct-dependencies and indirect-dependencies  
+In pyproject.toml add [tools.moppi.dependency-lock]  
 unit tests  
 tar.gz unpacking  
 sha256 check, but don't save it into moppi.yaml (make configurable?)  
 platform=Windows support  
 extra=='package' support  
-upload to arch aur and ubuntu  
-manage dependencies directly in pyproject.toml? direct-dependencies and indirect-dependencies  
-
-Package format is either python or yaml(with anchors) or json  
+upload to arch aur and ubuntu?  
+Caching  
 Async  
+Replace print with logging error warning info  
 Check pip cli, but not the source  
 Can install other moppi projects without extra configuration.  
-In docker it's still better to use a non-root user, so third party packages won't tamper with hosts file, system clock or even run outside of a container using some vulnerabilty. Or run outside of a container into cluster causing catastrophe.  
 
 ## done
-uninstall
+Package format is either python or yaml(with anchors) or json - toml + yaml  
+upgrade  
+apply  
+add and remove should work for list of packages  
+uninstall  
 make public, upload to pipy  
 python -m moppi support  
 CLI support  

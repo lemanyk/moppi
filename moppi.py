@@ -1,6 +1,4 @@
-"""
-Modern Python Package Installer
-"""
+"""Modern Python Package Installer."""
 
 import argparse
 import io
@@ -13,21 +11,23 @@ from zipfile import ZipFile
 import yaml
 
 
-def _rmtree(file: Path):
-    if file.is_file():
-        file.unlink()
+def _rmtree(path: Path):
+    """Remove files in path."""
+    if path.is_file():
+        path.unlink()
     else:
-        for child in file.iterdir():
+        for child in path.iterdir():
             _rmtree(child)
-        file.rmdir()
+        path.rmdir()
 
 
 class Config:
-    """Config"""
+    """Config."""
 
     CONFIG_FILE = "moppi.yaml"
 
     def __init__(self) -> None:
+        """Init."""
         try:
             with open(self.CONFIG_FILE, "r", encoding="utf8") as yaml_file:
                 config = yaml.load(yaml_file, yaml.Loader)
@@ -41,7 +41,7 @@ class Config:
 
     @property
     def all(self):
-        """All installed packages"""
+        """All installed packages."""
         return {
             package.lower()
             for package in self.dependencies.keys()
@@ -50,7 +50,7 @@ class Config:
         }
 
     def save(self):
-        """Save the config into moppi.yaml"""
+        """Save the config into moppi.yaml."""
         config = {
             "dependencies": self.dependencies,
             "dev_dependencies": self.dev_dependencies,
@@ -62,44 +62,57 @@ class Config:
 
 
 class Moppi:
-    """Moppi package installer"""
+    """Moppi package installer."""
 
     def __init__(self) -> None:
+        """Init."""
         self.config = Config()
 
     def _parse_args(self) -> tuple[str]:
-        """Parse the command line args"""
+        """Parse the command line args."""
         choices = ("add", "remove", "update", "apply")
 
         parser = argparse.ArgumentParser("Moppi package installer")
         parser.add_argument("command", type=str, choices=choices, help="command to execute")
-        parser.add_argument("package", type=str, help="package name")
+        parser.add_argument("packages", type=str, nargs="*", help="package name")
 
         args = parser.parse_args()
         command = args.command
-        package = args.package
+        packages = args.packages
+        print(f"Command: {command}, package: {packages}")
 
-        return command, package
+        return command, packages
 
-    def run(self) -> None:
-        """Execute install, remove, update or apply"""
-        command, package = self._parse_args()
+    def _run(self) -> None:
+        """Execute add, remove, apply or update."""
+        command, packages = self._parse_args()
+
+        if command in ["add", "remove"] and not packages:
+            print("No packages specified")
+            return
+
         match command:
             case "add":
-                print(f"Installing {package}")
-                self.add(package)
+                for package in packages:
+                    print(f"Adding {package}")
+                    self.add(package)
+
             case "remove":
-                print(f"Removing {package}")
-                self.remove(package)
-            case "update":
-                print(f"Updating {package}")
-                self.update(package)
+                for package in packages:
+                    print(f"Removing {package}")
+                    self.remove(package)
+
             case "apply":
-                print("Appliyng moppi.conf")
+                print("Applying moppi.conf")
                 self.apply()
 
-    def add(self, package: str, needed_by: None | list = None, is_dev: bool = False) -> None:
-        """Install a package"""
+            case "update":
+                for package in packages:
+                    print(f"Updating {package}")
+                    self.update(package)
+
+    def _download(self, package: str) -> dict:
+        """Download a package and save it to venv. Returns a package info."""
         url = f"https://pypi.org/pypi/{package}/json"
 
         data = urllib.request.urlopen(url).read()
@@ -110,7 +123,33 @@ class Moppi:
         package_url = info["urls"][0]["url"]
         filename = info["urls"][0]["filename"]
 
-        if package.lower() in self.config.all:
+        print("Downloading", filename)
+        data = urllib.request.urlopen(package_url).read()
+
+        file = ZipFile(io.BytesIO(data))
+        file.extractall(sys.path[-1])
+
+        return {
+            "name": package,
+            "sha256": info["urls"][0]["digests"]["sha256"],
+            "version": version,
+        }
+
+    def add(
+        self, package: str, needed_by: None | list = None, is_dev: bool = False, force=False
+    ) -> None:
+        """Install a package."""
+        url = f"https://pypi.org/pypi/{package}/json"
+
+        data = urllib.request.urlopen(url).read()
+        info = json.loads(data)
+
+        package = info["info"]["name"]
+        version = info["info"]["version"]
+        package_url = info["urls"][0]["url"]
+        filename = info["urls"][0]["filename"]
+
+        if not force and package.lower() in self.config.all:
             print(f"Package {package}=={version} is already installed")
             return
 
@@ -158,7 +197,7 @@ class Moppi:
             self.config.save()
 
     def remove(self, package: str):
-        """Remove a package"""
+        """Remove a package."""
         package = package.lower()
 
         if package not in self.config.all:
@@ -179,13 +218,26 @@ class Moppi:
             self.config.dependencies.pop(package)
             self.config.save()
 
-    def update(self, package: str):
-        """Update a package"""
-
     def apply(self):
-        """Apply the moppi.yaml config"""
+        """Apply the moppi.yaml config."""
+        for package in self.config.all:
+            for file in Path(sys.path[-1]).iterdir():
+                if file.name.split("-")[0].split(".")[0].lower() == package:
+                    print(f"Package {package} is already installed")
+                    break
+            else:
+                self._download(package)
+
+    def update(self, package: str):
+        """Update a package."""
+        package = package.lower()
+
+        if package not in self.config.all:
+            print(f"Package {package} is not installed!")
+            return
+
+        self.add(package, force=True)
 
 
 if __name__ == "__main__":
-    # Moppi().install('Werkzeug')
-    Moppi().run()
+    Moppi()._run()
