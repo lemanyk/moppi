@@ -9,7 +9,7 @@ add / install / i, remove / delete / r
 
 ```
 python -m moppi add flask
-python -m moppi add flask -d --dev
+python -m moppi add black --dev
 python -m moppi add flask gunicorn
 python -m moppi remove gunicorn
 python -m moppi apply
@@ -97,6 +97,10 @@ Async
 Replace print with logging error warning info  
 Check pip cli, but not the source  
 Can install other moppi projects without extra configuration.  
+sysconfig:  
+purelib = "/home/gen/moppi/.env/lib/python3.10/site-packages"  
+scripts = "/home/gen/moppi/.env/bin"  
+
 
 ## done
 Package format is either python or yaml(with anchors) or json - toml + yaml  

@@ -5,9 +5,7 @@ __pycache__/
 .env/
 dist/
 moppi.yaml
-
-# Unit test / coverage reports
-.pytest_cache/
+test.toml
 
 # Editor
 .vscode/
