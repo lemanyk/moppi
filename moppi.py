@@ -1,10 +1,11 @@
 """Modern Python Package Installer."""
 
 import argparse
-from enum import auto, Enum  # , StrEnum
+from enum import auto, Enum
 import io
 import json
 import sys
+from typing import Self
 import urllib.request
 from pathlib import Path
 from zipfile import ZipFile
@@ -36,22 +37,25 @@ class Dependency:
     version: str
     operator: DependencyOperator
 
+    # pyproject.toml data
     category: DependencyCategory
     optional: str | None = None
-    needed_by: list = []
+    needed_by: list[Self] = []
 
+    # pypi data
     package_url: str
     filename: str
+    requires_dist: list[str]
 
     @classmethod
-    def from_string(cls, string: str, optional: str = None):
+    def from_string(cls, string: str, optional: str | None = None) -> Self:
         """Create a dependency instance from the "package==1.0" like string."""
         dependency = cls()
         dependency.optional = optional
 
         for operator in DependencyOperator:
             if operator.value in string:
-                dependency.name, dependency.version = string.split(operator)
+                dependency.name, dependency.version = string.split(operator.value)
                 dependency.operator = operator
                 break
         else:
@@ -60,15 +64,15 @@ class Dependency:
         return dependency
 
     @classmethod
-    def from_list(cls, array: list[str]):
-        """Create a dependency instance from the list of an indirect dependency."""
+    def from_tuple(cls, array: list[str]) -> Self:
+        """Create a dependency instance from a tuple of an indirect dependency."""
         dependency = cls.from_string(array[0])
         dependency.needed_by = [Dependency.from_string(dep) for dep in array[1:]]
         return dependency
 
     @classmethod
-    def from_pypi(cls, info: dict):
-        """Create a dependency instance from the pypi info."""
+    def from_pypi(cls, info: dict) -> Self:
+        """Create a dependency instance from a pypi info."""
         dependency = cls()
 
         dependency.name = info["info"]["name"]
@@ -77,8 +81,13 @@ class Dependency:
 
         dependency.package_url = info["urls"][0]["url"]
         dependency.filename = info["urls"][0]["filename"]
+        dependency.requires_dist = info["info"]["requires_dist"]
 
         return dependency
+
+    def as_string(self) -> str:
+        """Return "package==1.0" like string."""
+        return f"{self.name}=={self.version}"
 
     def __repr__(self) -> str:
         """To string."""
@@ -99,14 +108,14 @@ class ConfigTOML:
             config = {}
 
         self.dependencies = [
-            Dependency(dep) for dep in config.get("project", {}).get("dependencies", [])
+            Dependency.from_string(dep) for dep in config.get("project", {}).get("dependencies", [])
         ]
         self.dev_dependencies = [
-            Dependency(dep, optional="dev")
+            Dependency.from_string(dep, optional="dev")
             for dep in config.get("project", {}).get("optional-dependencies", {}).get("dev", [])
         ]
         self.indirect_dependencies = [
-            Dependency(dep)
+            Dependency.from_tuple(dep)
             for dep in config.get("tool", {}).get("moppi", {}).get("indirect-dependencies", {})
         ]
         print("Currently installed", self.all)
@@ -123,14 +132,17 @@ class ConfigTOML:
         """Save the config into moppi.yaml."""
         config = {
             "project": {
-                "dependencies": self.dependencies,
+                "dependencies": [dep.as_string() for dep in self.dependencies],
                 "optional-dependencies": {
-                    "dev": self.dev_dependencies,
+                    "dev": [dep.as_string() for dep in self.dev_dependencies],
                 },
             },
             "tool": {
                 "moppi": {
-                    "indirect-dependencies": self.indirect_dependencies,
+                    "indirect-dependencies": [
+                        [dep.as_string(), *[depn.as_string() for depn in dep.needed_by]]
+                        for dep in self.indirect_dependencies
+                    ],
                 }
             },
         }
@@ -182,7 +194,7 @@ class ConfigYAML:
 class Moppi:
     """Moppi package installer."""
 
-    def _parse_args(self) -> tuple[str]:
+    def _parse_args(self) -> tuple[str, list[str]]:
         """Parse the command line args."""
         choices = ("add", "remove", "update", "apply")
 
@@ -207,7 +219,7 @@ class Moppi:
 
         return command, packages
 
-    def _run(self) -> None:
+    def execute_command(self) -> None:
         """Execute add, remove, apply or update."""
         command, packages = self._parse_args()
 
@@ -235,100 +247,58 @@ class Moppi:
                     print(f"Updating {package}")
                     self.update(package)
 
-    def _get_package_info(self, package):
-        """Info."""
+    def _get_package_info(self, package: str) -> Dependency:
+        """Get a package info from PyPi."""
         url = f"https://pypi.org/pypi/{package}/json"
 
+        print("Getting package info", package)
         data = urllib.request.urlopen(url).read()
         info = json.loads(data)
 
         return Dependency.from_pypi(info)
 
-    def _download(self, package: str) -> dict:
-        """Download a package and save it to venv. Returns a package info."""
-        url = f"https://pypi.org/pypi/{package}/json"
-
-        data = urllib.request.urlopen(url).read()
-        info = json.loads(data)
-
-        package = info["info"]["name"]
-        version = info["info"]["version"]
-        package_url = info["urls"][0]["url"]
-        filename = info["urls"][0]["filename"]
-
-        print("Downloading", filename)
-        data = urllib.request.urlopen(package_url).read()
-
+    def _download(self, dependecy: Dependency) -> None:
+        """Download the dependancy and save it to venv."""
+        print("Downloading", dependecy.filename)
+        data = urllib.request.urlopen(dependecy.package_url).read()
         file = ZipFile(io.BytesIO(data))
-        file.extractall(sys.path[-1])
+        file.extractall(sys.path[-1])  # need to use sysconfig
 
-        return {
-            "name": package,
-            "sha256": info["urls"][0]["digests"]["sha256"],
-            "version": version,
-        }
-
-    def add(
+    def _install(
         self,
         package: str,
         needed_by: None | list = None,
-        is_dev: bool = False,
-        force=False,
+        optional: str | None = None,
     ) -> None:
         """Install a package."""
-        url = f"https://pypi.org/pypi/{package}/json"
-
-        data = urllib.request.urlopen(url).read()
-        info = json.loads(data)
-
-        package = info["info"]["name"]
-        version = info["info"]["version"]
-        package_url = info["urls"][0]["url"]
-        filename = info["urls"][0]["filename"]
-
-        if not force and package.lower() in self.config.all:
-            print(f"Package {package}=={version} is already installed")
-            return
-
-        print("Downloading", filename)
-
-        data = urllib.request.urlopen(package_url).read()
-        # open(filename, 'wb').write(data)
-
-        file = ZipFile(io.BytesIO(data))
-        file.extractall(sys.path[-1])
-
-        package_info = {
-            "name": package,
-            "sha256": info["urls"][0]["digests"]["sha256"],
-            "version": version,
-        }
+        dependecy = self._get_package_info(package)
+        self._download(dependecy)
 
         if needed_by:
-            package_info["needed_by"] = [needed_by]
-            self.config.indirect_dependencies[package] = package_info
-        elif is_dev:
-            self.config.dev_dependencies[package] = package_info
+            dependecy.needed_by = [needed_by]
+            self.config.indirect_dependencies.append(dependecy)
+        elif optional:
+            self.config.dev_dependencies.append(dependecy)
         else:
-            self.config.dependencies[package] = package_info
+            self.config.dependencies.append(dependecy)
 
-        if info["info"]["requires_dist"]:
-            for dependecy in info["info"]["requires_dist"]:
-                if "extra" in dependecy or "platform" in dependecy:
+        if dependecy.requires_dist:
+            for dep in dependecy.requires_dist:
+                if "extra" in dep or "platform" in dep:
                     continue
 
-                if " " in dependecy:
-                    dep_package, versions = dependecy.split(" ", 1)
-                elif "==" in dependecy:
-                    dep_package, versions = dependecy.split("==", 1)
-                elif ">=" in dependecy:
-                    dep_package, versions = dependecy.split(">=", 1)
+                if " " in dep:
+                    dep_package, versions = dep.split(" ", 1)
+                elif "==" in dep:
+                    dep_package, versions = dep.split("==", 1)
+                elif ">=" in dep:
+                    dep_package, versions = dep.split(">=", 1)
                 else:
-                    dep_package, versions = dependecy, ""
+                    dep_package, versions = dep, ""
 
                 if dep_package not in self.config.all:
                     print("Dependencies", dep_package, versions)
-                    self.add(dep_package, package, is_dev)
+                    self._install(dep_package, dependecy, optional)
 
         if needed_by is None:
             self.config.save()
@@ -342,6 +312,13 @@ class Moppi:
             for child in path.iterdir():
                 cls._rmtree(child)
             path.rmdir()
+
+    def add(self, package: str):
+        """Add a package."""
+        if package.lower() in self.config.all:
+            print(f"Package {package} is already installed")
+        else:
+            self._install(package)
 
     def remove(self, package: str):
         """Remove a package."""
@@ -383,8 +360,8 @@ class Moppi:
             print(f"Package {package} is not installed!")
             return
 
-        self.add(package, force=True)
+        self._install(package)
 
 
 if __name__ == "__main__":
-    Moppi()._run()
+    Moppi().execute_command()
