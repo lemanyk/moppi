@@ -19,6 +19,7 @@ classifiers = [
 ]
 dependencies = [
     "PyYAML>=6.0",
+    "tomli_w==1.0.0",
 ]
 
 [project.optional-dependencies]
@@ -36,8 +37,8 @@ dev = [
 
 [tool.moppi]
 indirect-dependencies = [
-    ["click==1.0", "flask"],
-    ["weurkzeug==1.0", "flask"],
+    ["click==1.0", "flask==1"],
+    ["weurkzeug==1.0", "flask==1"],
 ]
 #[tool.moppi.dependency-lock]
 #[tool.moppi.indirect-dependencies]

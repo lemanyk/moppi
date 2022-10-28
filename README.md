@@ -1,21 +1,41 @@
 # Moppi
-Moppi - Modern Python Package Installer  
-Where you don't manually manage the package list file  
-With an automatic dependecy file management  
-With the explicit package dependecy tree. Inspired by yarn and go/mod.  
-add creates new file moppi.yaml  
+Moppi - Modern Python Package Installer.  
+Automatically manages dependencies using either pyproject.toml or it's own yaml file.  
 
-add / install / i, remove / delete / r  
-
+## Usage
 ```
 python -m moppi add flask
 python -m moppi add black --dev
 python -m moppi add flask gunicorn
+python -m moppi update flask
 python -m moppi remove gunicorn
 python -m moppi apply
 python -m moppi apply --dev
-python -m moppi apply - f package.py / moppi.py
-python -m moppi update flask
+```
+
+## Config file example, stored in pyproject.toml
+```
+[project]
+dependencies = [
+    "Werkzeug==2.2.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "moppi==0.2",
+]
+
+[tool.moppi]
+indirect-dependencies = [
+    [
+        "PyYAML==6.0",
+        "moppi==0.2",
+    ],
+    [
+        "MarkupSafe==2.1.1",
+        "Werkzeug==2.2.2",
+    ],
+]
 ```
 
 ## Config file example, stored in moppi.yaml
@@ -84,8 +104,6 @@ CMD ["gunicorn", "--bind", ":$PORT", "--threads", "8", "main:app"]
 ```
 
 ## todo
-manage dependencies directly in pyproject.toml? direct-dependencies and indirect-dependencies  
-In pyproject.toml add [tools.moppi.dependency-lock]  
 unit tests  
 tar.gz unpacking  
 sha256 check, but don't save it into moppi.yaml (make configurable?)  
@@ -103,6 +121,11 @@ scripts = "/home/gen/moppi/.env/bin"
 
 
 ## done
+add / install / i, remove / delete / r  
+Has an explicit package dependecy tree. Inspired by yarn and go/mod.  
+Packages stored in pyproject.toml file or in moppi.yaml  
+In pyproject.toml add [tools.moppi.dependency-lock]  
+manage dependencies directly in pyproject.toml? direct-dependencies and indirect-dependencies  
 Package format is either python or yaml(with anchors) or json - toml + yaml  
 upgrade  
 apply  
