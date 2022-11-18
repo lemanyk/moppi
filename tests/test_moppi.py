@@ -2,6 +2,10 @@
 Moppi installer tests.
 
 python -m unittest discover -s tests/
+
+python -m build
+python -m twine upload --repository testpypi dist/*
+pip install --index-url https://test.pypi.org/simple/ --no-deps moppi
 """
 
 from pathlib import Path

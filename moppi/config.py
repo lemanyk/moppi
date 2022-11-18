@@ -29,7 +29,8 @@ class ConfigTOML(Config):
 class ConfigTOMLW(Config):
     """Config in pyproject.toml file, using tomli_w."""
 
-    CONFIG_FILE = Path("test.toml")
+    # CONFIG_FILE = Path("test.toml")
+    CONFIG_FILE = Path("pyproject.toml")
 
     dependencies: set[Dependency] = set()
     optional_dependencies: dict[str, set[Dependency]] = {}
@@ -51,9 +52,9 @@ class ConfigTOMLW(Config):
             self.config.get("project", {}).get("optional-dependencies", {}).items()
         ):
             for dep in deps:
-                self.optional_dependencies[optional] = {
+                self.optional_dependencies.setdefault(optional, set()).add(
                     Dependency.from_string(dep, optional=optional)
-                }
+                )
 
         self.indirect_dependencies = {
             Dependency.from_tuple(dep)
