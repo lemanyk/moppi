@@ -104,7 +104,6 @@ CMD ["gunicorn", "--bind", ":$PORT", "--threads", "8", "main:app"]
 ```
 
 ## todo
-unit tests  
 tar.gz unpacking  
 sha256 check, but don't save it into moppi.yaml (make configurable?)  
 platform=Windows support  
@@ -116,11 +115,18 @@ Replace print with logging error warning info
 Check pip cli, but not the source  
 Can install other moppi projects without extra configuration.  
 sysconfig:  
-purelib = "/home/gen/moppi/.env/lib/python3.10/site-packages"  
+purelib = "/home/gen/moppi/.env/lib/python3.11/site-packages"  
 scripts = "/home/gen/moppi/.env/bin"  
+moppi[full] - includes tomli_w and pyyaml. Or moppi[lean]  
+--index-url https://test.pypi.org/simple/  
+--no-deps  
 
 
 ## done
+unit tests  
+Config, ConfigTOML, ConfigTOMLW, ConfigYAML  
+moppi folder, config.py  
+.env/bin/moppi  
 add / install / i, remove / delete / r  
 Has an explicit package dependecy tree. Inspired by yarn and go/mod.  
 Packages stored in pyproject.toml file or in moppi.yaml  

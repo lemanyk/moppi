@@ -6,6 +6,3 @@ __pycache__/
 dist/
 moppi.yaml
 test.toml
-
-# Editor
-.vscode/
