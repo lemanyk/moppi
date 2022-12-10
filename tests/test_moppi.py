@@ -8,12 +8,12 @@ python -m twine upload --repository testpypi dist/*
 pip install --index-url https://test.pypi.org/simple/ --no-deps moppi
 """
 
-from pathlib import Path
 import sys
-import tomllib
 import unittest
+from pathlib import Path
 
 import tomli_w
+import tomllib
 
 from moppi.config import ConfigTOMLW
 from moppi.installer import Moppi
@@ -41,7 +41,9 @@ class TestMoppi(unittest.TestCase):
 
     def setUp(self) -> None:
         """Remove the test.toml file."""
-        Path("test.toml").unlink(missing_ok=True)
+        self.config_file = Path("test1.toml")
+        self.config_file.unlink(missing_ok=True)
+        ConfigTOMLW.CONFIG_FILE = self.config_file
 
     # def tearDown(self) -> None:
     #     """Remove the test.toml file."""
@@ -63,9 +65,7 @@ class TestMoppi(unittest.TestCase):
                 {
                     "project": {"dependencies": ["Werkzeug==2.2.2"]},
                     "tool": {
-                        "moppi": {
-                            "indirect-dependencies": [["MarkupSafe==2.1.1", "Werkzeug==2.2.2"]]
-                        }
+                        "moppi": {"indirect-dependencies": ["MarkupSafe==2.1.1 :: Werkzeug==2.2.2"]}
                     },
                 },
             )
@@ -89,17 +89,14 @@ class TestMoppi(unittest.TestCase):
         m.update(package)
 
         # check whether the config file was updated
-        with open(Path("test.toml"), "rb") as toml_file:
+        with open(self.config_file, "rb") as toml_file:
             config = tomllib.load(toml_file)
-            print(config)
             self.assertEqual(
                 config,
                 {
                     "project": {"dependencies": ["Werkzeug==2.2.2"]},
                     "tool": {
-                        "moppi": {
-                            "indirect-dependencies": [["MarkupSafe==2.1.1", "Werkzeug==2.2.2"]]
-                        }
+                        "moppi": {"indirect-dependencies": ["MarkupSafe==2.1.1 :: Werkzeug==2.2.2"]}
                     },
                 },
             )
@@ -114,7 +111,7 @@ class TestMoppi(unittest.TestCase):
         m.remove(package)
 
         # check whether the config file was updated
-        with open(Path("test.toml"), "rb") as toml_file:
+        with open(self.config_file, "rb") as toml_file:
             config = tomllib.load(toml_file)
             print(config)
             self.assertEqual(
@@ -130,11 +127,9 @@ class TestMoppi(unittest.TestCase):
         # create config
         config = {
             "project": {"dependencies": ["Werkzeug==2.2.2"]},
-            "tool": {
-                "moppi": {"indirect-dependencies": [["MarkupSafe==2.1.1", "Werkzeug==2.2.2"]]}
-            },
+            "tool": {"moppi": {"indirect-dependencies": ["MarkupSafe==2.1.1 :: Werkzeug==2.2.2"]}},
         }
-        with open(Path("test.toml"), "wb") as toml_file:
+        with open(self.config_file, "wb") as toml_file:
             tomli_w.dump(config, toml_file)
 
         # apply

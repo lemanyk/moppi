@@ -2,7 +2,10 @@
 __pycache__/
 
 # Distribution / packaging
-.env/
+.env*
 dist/
 moppi.yaml
 test.toml
+test1.toml
+a.py
+b.py

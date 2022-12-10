@@ -1,70 +1,42 @@
 # Moppi
 Moppi - Modern Python Package Installer.  
-Automatically manages dependencies using either pyproject.toml or it's own yaml file.  
+Automatically manages dependencies using pyproject.toml file.  
 
 ## Usage
 ```
-python -m moppi add flask
-python -m moppi add black --dev
-python -m moppi add flask gunicorn
-python -m moppi update flask
-python -m moppi remove gunicorn
-python -m moppi apply
-python -m moppi apply --dev
+moppi add flask fastapi
+moppi add black --dev
+moppi update flask
+moppi remove flask
+moppi apply
+moppi apply --dev
 ```
 
 ## Config file example, stored in pyproject.toml
 ```
 [project]
 dependencies = [
-    "Werkzeug==2.2.2",
+    "fastapi==0.88.0",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "moppi==0.2",
+    "black==22.12.0",
 ]
 
 [tool.moppi]
 indirect-dependencies = [
-    [
-        "PyYAML==6.0",
-        "moppi==0.2",
-    ],
-    [
-        "MarkupSafe==2.1.1",
-        "Werkzeug==2.2.2",
-    ],
+    "starlette==0.23.1 :: fastapi==0.88.0",
+    "idna==3.4 :: anyio==3.6.2",
+    "platformdirs==2.6.0 :: black==22.12.0",
+    "click==8.1.3 :: black==22.12.0",
+    "anyio==3.6.2 :: starlette==0.23.1",
+    "pydantic==1.10.2 :: fastapi==0.88.0",
+    "typing-extensions==4.4.0 :: pydantic==1.10.2",
+    "mypy-extensions==0.4.3 :: black==22.12.0",
+    "sniffio==1.3.0 :: anyio==3.6.2",
+    "pathspec==0.10.2 :: black==22.12.0",
 ]
-```
-
-## Config file example, stored in moppi.yaml
-```
-dependencies:
-  Werkzeug:
-    name: Werkzeug
-    sha256: f979ab81f58d7318e064e99c4506445d60135ac5cd2e177a2de0089bfd4c9bd5
-    version: 2.2.2
-dev_dependencies: {}
-indirect_dependencies:
-  MarkupSafe:
-    name: MarkupSafe
-    needed_by:
-    - Werkzeug
-    sha256: 86b1f75c4e7c2ac2ccdaec2b9022845dbb81880ca318bb7a0a01fbf7813e3812
-    version: 2.1.1
-  PyYAML:
-    name: PyYAML
-    needed_by:
-    - watchdog
-    sha256: d4db7c7aef085872ef65a8fd7d6d09a14ae91f691dec3e87ee5ee0539d516f53
-    version: '6.0'
-  watchdog:
-    name: watchdog
-    needed_by:
-    - Werkzeug
-    sha256: a735a990a1095f75ca4f36ea2ef2752c99e6ee997c46b0de507ba40a09bf7330
-    version: 2.1.9
 ```
 
 ## Installation
@@ -120,6 +92,8 @@ scripts = "/home/gen/moppi/.env/bin"
 moppi[full] - includes tomli_w and pyyaml. Or moppi[lean]  
 --index-url https://test.pypi.org/simple/  
 --no-deps  
+Drop yaml support?  
+--dev -d / --test / --cicd / --doc / --tools / --all  
 
 
 ## done

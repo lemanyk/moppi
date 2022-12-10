@@ -3,9 +3,9 @@
 import argparse
 import io
 import json
-from pathlib import Path
 import sys
 import urllib.request
+from pathlib import Path
 from zipfile import ZipFile
 
 from moppi.config import ConfigTOMLW
@@ -20,10 +20,6 @@ class Moppi:
     def execute_command(self) -> None:
         """Execute add, update, remove or apply."""
         command, packages, optional = self._parse_args()
-
-        if command in ["add", "remove"] and not packages:
-            print("No packages specified")
-            return
 
         match command:
             case "add":
@@ -42,8 +38,8 @@ class Moppi:
                     self.remove(package)
 
             case "apply":
-                print("Applying moppi.conf")
-                self.apply()
+                print("Applying pyproject.toml")
+                self.apply(optional)
 
     def add(self, package: str, optional: str | None = None):
         """Add a package."""
@@ -65,11 +61,11 @@ class Moppi:
         self._install(Dependency(package))
         self.config.save()
 
-    def remove(self, package: str):
+    def remove(self, package: str, indirect: bool = False):
         """Remove a package."""
         package = package.lower()
 
-        if package not in self.config.all:
+        if package not in self.config.all and not indirect:
             print(f"Package {package} is not installed!")
             return
 
@@ -78,20 +74,23 @@ class Moppi:
             dep for dep in self.config.dependencies if dep.name.lower() != package
         }
 
-        # remove indirect dependencies
-        packages = {package}
-        for dependency in self.config.indirect_dependencies.copy():
-            dependency.needed_by = {
-                dep for dep in dependency.needed_by if dep.name.lower() != package
+        # remove package from optional dependencies
+        for optional, deps in self.config.optional_dependencies.copy().items():
+            self.config.optional_dependencies[optional] = {
+                dep for dep in deps if dep.name.lower() != package
             }
-            if not dependency.needed_by:
-                packages.add(dependency.name)
-                self.config.indirect_dependencies.remove(dependency)
+            if not self.config.optional_dependencies[optional]:
+                del self.config.optional_dependencies[optional]
+
+        # remove indirect dependencies
+        packages = [package] + self._cleanup_indirect(package)
+
+        print(f"Removing {packages}")
 
         # delete files
         files = []
         for file in Path(sys.path[-1]).iterdir():
-            if file.name.split("-")[0].split(".")[0].lower() == package:
+            if file.name.split("-")[0].split(".")[0].lower() in packages:
                 files.append(file)
 
         if files:
@@ -100,13 +99,23 @@ class Moppi:
                 print(str(file))
                 self._rmtree(file)
 
-        self.config.save()
+        if not indirect:
+            self.config.save()
 
-    def apply(self):
+    def apply(self, optional: str | None = None):
         """Apply the pyproject.toml / moppi.yaml config."""
-        for package in self.config.all:
+        if not optional:
+            packages = self.config.all
+        else:
+            packages = [dep.name for dep in self.config.optional_dependencies.get(optional, set())]
+
+        for package in packages:
             for file in Path(sys.path[-1]).iterdir():
-                if file.name.split("-")[0].split(".")[0].lower() == package:
+                # file_name = file
+                # if '-' in file.name:
+                #     file.name = file.name.split("-")[0]
+                # print(444, package, file.name)
+                if file.name.split("-")[0].split(".")[0].lower() == package.replace("-", "_"):
                     print(f"Package {package} is already installed")
                     break
             else:
@@ -124,27 +133,33 @@ class Moppi:
         parser.add_argument("packages", type=str, nargs="*", help="Package name")
 
         parser.add_argument("--optional", type=str, help="Optional")
-
-        for optional in ["dev", "test", "ci", "doc", "all"]:
+        parser.add_argument(
+            "-d", dest="optional", action="store_const", const="dev", help="--optional=dev"
+        )
+        for optional in ["dev", "test", "cicd", "doc", "tools", "all"]:
             parser.add_argument(
                 f"--{optional}",
                 dest="optional",
                 action="store_const",
                 const=optional,
-                help=f"Optional == {optional}",
+                help=f"--optional={optional}",
             )
 
-        parser.add_argument(
-            "--yaml", dest="use_yaml", action="store_true", help="Use moppi.yaml file instead"
-        )
+        # parser.add_argument(
+        #     "--yaml", dest="use_yaml", action="store_true", help="Use moppi.yaml file instead"
+        # )
 
         args = parser.parse_args()
         command = args.command
         packages = args.packages
         optional = args.optional
-        use_yaml = args.use_yaml
+        # use_yaml = args.use_yaml
 
-        print(f"Command: {command}, package: {packages}, optional: {optional} use_yaml: {use_yaml}")
+        print(f"Command: {command}, package: {packages}, optional: {optional}")
+
+        if command in ["add", "remove"] and not packages:
+            print("No packages specified")
+            sys.exit(1)
 
         self.config = ConfigTOMLW()
         # self.config = ConfigYAML() if use_yaml else ConfigTOML()
@@ -183,6 +198,8 @@ class Moppi:
             for dep in dependency.requires_dist:
                 if ";" in dep:  # or "extra" in dep or "platform" in dep:
                     continue
+                # if "jaraco" in dep.lower():
+                #     assert 0
 
                 new_dependency = Dependency.from_string(dep)
                 new_dependency.needed_by.add(dependency)
@@ -190,6 +207,22 @@ class Moppi:
                 if new_dependency.name.lower() not in self.config.all:
                     print("Dependencies", new_dependency.name, new_dependency.version)
                     self._install(new_dependency, optional=optional)
+
+    def _cleanup_indirect(self, package: str) -> list[str]:
+        """Cleanup indirect dependencies."""
+        packages = []
+        for dependency in self.config.indirect_dependencies.copy():
+            dependency.needed_by = {
+                dep for dep in dependency.needed_by if dep.name.lower() != package
+            }
+            if not dependency.needed_by:
+                # print(333, dependency.name, self.config.indirect_dependencies)
+                packages.append(dependency.name.lower())
+                if dependency in self.config.indirect_dependencies:
+                    self.config.indirect_dependencies.remove(dependency)
+                packages += self._cleanup_indirect(dependency.name.lower())
+
+        return packages
 
     @classmethod
     def _rmtree(cls, path: Path):

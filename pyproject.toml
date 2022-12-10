@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "moppi"
-version = "0.3.1"
+version = "0.4.0"
 authors = [
     { name = "Gennadii Egorov", email = "lemanyk@gmail.com" },
 ]
@@ -20,8 +20,8 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "PyYAML>=6.0",
-    "tomli_w==1.0.0",
+    "tomli-w==1.0.0",
+    "PyYAML==6.0",
 ]
 
 [project.scripts]
@@ -32,25 +32,16 @@ Homepage = "https://github.com/lemanyk/moppi"
 "Bug Tracker" = "https://github.com/lemanyk/moppi/issues"
 
 [project.optional-dependencies]
-test = [
-    "pytest>=7.1",
-]
 dev = [
-    "build>=0.8",
-    "twine>=4.0",
-]
-
-[tool.moppi]
-indirect-dependencies = [
-    [
-        "weurkzeug==1.0",
-        "flask==1",
-    ],
-    [
-        "click==1.0",
-        "flask==1",
-    ],
+    "build==0.9.0",
+    "twine==4.0.2",
 ]
 
 [tool.black]
 line-length = 100
+
+[tool.moppi]
+indirect-dependencies = [
+    "packaging==22.0 :: build==0.9.0",
+    "pep517==0.13.0 :: build==0.9.0",
+]

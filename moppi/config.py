@@ -1,8 +1,9 @@
 """Configs."""
 
 from pathlib import Path
-import tomllib
+
 import tomli_w
+import tomllib
 import yaml
 
 from moppi.dependency import Dependency
@@ -14,7 +15,7 @@ class Config:
     CONFIG_FILE: Path
 
     def all(self):
-        """All installed packages."""
+        """Get all the installed packages."""
 
     def save(self):
         """Save the config into a config file."""
@@ -57,7 +58,8 @@ class ConfigTOMLW(Config):
                 )
 
         self.indirect_dependencies = {
-            Dependency.from_tuple(dep)
+            # Dependency.from_tuple(dep)
+            Dependency.from_composite_string(dep)
             for dep in self.config.get("tool", {}).get("moppi", {}).get("indirect-dependencies", [])
         }
 
@@ -89,7 +91,8 @@ class ConfigTOMLW(Config):
             self.config["project"].pop("optional-dependencies", None)
 
         self.config.setdefault("tool", {}).setdefault("moppi", {})["indirect-dependencies"] = [
-            [dep.as_string(), *set(depn.as_string() for depn in dep.needed_by)]
+            # [dep.as_string(), *set(depn.as_string() for depn in dep.needed_by)]
+            f"{dep.as_string()} :: {' :: '.join(depn.as_string() for depn in dep.needed_by)}"
             for dep in self.indirect_dependencies
         ]
 

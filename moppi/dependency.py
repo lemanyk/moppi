@@ -1,15 +1,8 @@
 """Dependency."""
 
-from enum import auto, Enum
-from typing import Self  # type: ignore
-
-
-class DependencyCategory(Enum):
-    """Dependency Category."""
-
-    top_level = auto()  # root
-    optional = auto()
-    indirect = auto()
+import re
+from enum import Enum
+from typing import Self
 
 
 class DependencyOperator(Enum):
@@ -18,7 +11,8 @@ class DependencyOperator(Enum):
     equal = "=="
     upper = ">="
     lower = "<="
-    space = " "
+    # space = " "
+    # not_equal = "!="
 
     def __repr__(self) -> str:
         """To string."""
@@ -31,11 +25,10 @@ class Dependency:
     """Dataclass representation of a dependency string / tuple / pypi info."""
 
     name: str
-    version: str
+    version: str = ""
     operator: DependencyOperator
 
     # pyproject.toml data
-    category: DependencyCategory
     optional: str | None = None
     needed_by: set[Self]  # set of packages that have this as a direct dependency
 
@@ -52,18 +45,31 @@ class Dependency:
     @classmethod
     def from_string(cls, string: str, optional: str | None = None) -> Self:
         """Create a dependency instance from the "package==1.0" like string."""
+        # print(f"Dependency.from_string: {string}")
         string = string.replace(" ", "").replace("(", "").replace(")", "")
+
+        # match the package name at the start of the string
+        match = re.match(r"^([\w\.-]+)([^\w\.-].*)?$", string)
+        if not match:
+            raise Exception(f"Unknown dependency string: {string}")
+        package_name = match.group(1)
+        constraints_string = match.group(2) or ""
+
+        # find all version constraints
+        constraints = re.split(r",", constraints_string)
+        constraints = [c.strip() for c in constraints if c.strip()]
+
+        # create the dependency
+        dependency = cls(package_name)
 
         for operator in DependencyOperator:
             if operator.value in string:
-                name, version = string.split(operator.value)
-                dependency = cls(name)
-                dependency.version = version
+                operator_constraints = [c for c in constraints if c.startswith(operator.value)]
+                dependency.version = operator_constraints[0].split(operator.value)[1]
                 dependency.operator = operator
                 break
-        else:
-            # raise Exception(f"Unknown operator in {string}")  # fix when this happens
-            dependency = cls(string)
+        # else:
+        #     raise Exception(f"Unknown operator in {string}")  # fix when this happens
 
         dependency.optional = optional
         return dependency
@@ -73,6 +79,13 @@ class Dependency:
         """Create a dependency instance from a tuple of an indirect dependency."""
         dependency = cls.from_string(array[0])
         dependency.needed_by = set(Dependency.from_string(dep) for dep in array[1:])
+        return dependency
+
+    @classmethod
+    def from_composite_string(cls, string: str) -> Self:
+        """Create a dependency instance from a composite string of an indirect dependency."""
+        dependency = cls.from_string(string.split(" :: ")[0])
+        dependency.needed_by = set(Dependency.from_string(dep) for dep in string.split(" :: ")[1:])
         return dependency
 
     def apply_pypi_info(self, info: dict):
