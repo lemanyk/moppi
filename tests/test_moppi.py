@@ -15,7 +15,8 @@ from pathlib import Path
 import tomli_w
 import tomllib
 
-from moppi.config import ConfigTOMLW
+from moppi.config import Config
+from moppi.dependency import Dependency
 from moppi.installer import Moppi
 
 
@@ -41,9 +42,8 @@ class TestMoppi(unittest.TestCase):
 
     def setUp(self) -> None:
         """Remove the test.toml file."""
-        self.config_file = Path("test1.toml")
-        self.config_file.unlink(missing_ok=True)
-        ConfigTOMLW.CONFIG_FILE = self.config_file
+        Config.CONFIG_FILE = Path("test1.toml")
+        Config.CONFIG_FILE.unlink(missing_ok=True)
 
     # def tearDown(self) -> None:
     #     """Remove the test.toml file."""
@@ -52,51 +52,61 @@ class TestMoppi(unittest.TestCase):
     def test_add(self):
         """Test adding a package."""
         # install a package
-        package = "Werkzeug"
+        dependency = Dependency("Werkzeug")
         m = Moppi()
-        m.config = ConfigTOMLW()
-        m.add(package)
+        m.add(dependency)
 
         # check whether the config file was updated
-        with open(Path("test.toml"), "rb") as toml_file:
+        with open(Config.CONFIG_FILE, "rb") as toml_file:
             config = tomllib.load(toml_file)
             self.assertEqual(
                 config,
                 {
                     "project": {"dependencies": ["Werkzeug==2.2.2"]},
                     "tool": {
-                        "moppi": {"indirect-dependencies": ["MarkupSafe==2.1.1 :: Werkzeug==2.2.2"]}
+                        "moppi": {
+                            "dependency-lock": [
+                                "Werkzeug==2.2.2 :: f979ab81f58d7318e064e99c4506445d60135ac5cd2e177a2de0089bfd4c9bd5",
+                                "MarkupSafe==2.1.1 :: Werkzeug==2.2.2 :: 86b1f75c4e7c2ac2ccdaec2b9022845dbb81880ca318bb7a0a01fbf7813e3812",
+                            ],
+                            "indirect-dependencies": ["MarkupSafe==2.1.1 :: Werkzeug==2.2.2"],
+                        }
                     },
                 },
             )
 
         # check whether the package exists in .env
         venv = Path(sys.path[-1])
-        files = list(venv.glob(f"*{package}*"))
+        files = list(venv.glob(f"*{dependency.name}*"))
         self.assertTrue(files)
 
         # import the package
-        pack = __import__(package.lower())
+        pack = __import__(dependency.name.lower())
         self.assertTrue(pack.__file__)
 
     def test_update(self):
         """Test updating a package."""
         # update
-        package = "Werkzeug"
+        dependency = Dependency("Werkzeug")
         m = Moppi()
-        m.config = ConfigTOMLW()
-        m.add(package)
-        m.update(package)
+        m.add(dependency)
+        m.update(dependency)
 
         # check whether the config file was updated
-        with open(self.config_file, "rb") as toml_file:
+        with open(Config.CONFIG_FILE, "rb") as toml_file:
             config = tomllib.load(toml_file)
             self.assertEqual(
                 config,
                 {
                     "project": {"dependencies": ["Werkzeug==2.2.2"]},
                     "tool": {
-                        "moppi": {"indirect-dependencies": ["MarkupSafe==2.1.1 :: Werkzeug==2.2.2"]}
+                        "moppi": {
+                            "dependency-lock": [
+                                "Werkzeug==2.2.2 :: f979ab81f58d7318e064e99c4506445d60135ac5cd2e177a2de0089bfd4c9bd5",
+                                "MarkupSafe==2.1.1 :: Werkzeug==2.2.2 :: 86b1f75c4e7c2ac2ccdaec2b9022845dbb81880ca318bb7a0a01fbf7813e3812",
+                            ],
+                            "indirect-dependencies": ["MarkupSafe==2.1.1 :: Werkzeug==2.2.2"],
+                        }
                     },
                 },
             )
@@ -104,21 +114,18 @@ class TestMoppi(unittest.TestCase):
     def test_remove(self):
         """Test removing a package."""
         # remove a package
-        package = "Werkzeug"
+        dependency = Dependency("Werkzeug")
         m = Moppi()
-        m.config = ConfigTOMLW()
-        m.add(package)
-        m.remove(package)
+        m.add(dependency)
+        m.remove(dependency)
 
         # check whether the config file was updated
-        with open(self.config_file, "rb") as toml_file:
+        with open(Config.CONFIG_FILE, "rb") as toml_file:
             config = tomllib.load(toml_file)
-            print(config)
             self.assertEqual(
                 config,
                 {
                     "project": {"dependencies": []},
-                    "tool": {"moppi": {"indirect-dependencies": []}},
                 },
             )
 
@@ -129,20 +136,19 @@ class TestMoppi(unittest.TestCase):
             "project": {"dependencies": ["Werkzeug==2.2.2"]},
             "tool": {"moppi": {"indirect-dependencies": ["MarkupSafe==2.1.1 :: Werkzeug==2.2.2"]}},
         }
-        with open(self.config_file, "wb") as toml_file:
+        with open(Config.CONFIG_FILE, "wb") as toml_file:
             tomli_w.dump(config, toml_file)
 
         # apply
-        package = "Werkzeug"
+        dependency = Dependency("Werkzeug")
         m = Moppi()
-        m.config = ConfigTOMLW()
         m.apply()
 
         # check whether the package exists in .env
         venv = Path(sys.path[-1])
-        files = list(venv.glob(f"*{package}*"))
+        files = list(venv.glob(f"*{dependency.name}*"))
         self.assertTrue(files)
 
         # import the package
-        pack = __import__(package.lower())
+        pack = __import__(dependency.name.lower())
         self.assertTrue(pack.__file__)
